@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BakeryOS Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bakery: { light: '#FFF6F4', pink: '#F9A8D4', brown: '#D4A373', dark: '#A67C52' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: sans-serif; background-color: #FFF6F4; color: #4A4A4A; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50 text-white font-bold text-lg">
+        <div class="bg-white text-gray-800 p-6 rounded-xl shadow-lg flex items-center gap-3">
+            <i class="fa-solid fa-spinner animate-spin text-bakery-dark text-2xl"></i> กำลังเชื่อมต่อฐานข้อมูล...
+        </div>
+    </div>
+
+    <!-- 1. Auth Screen -->
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-bakery-pink">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-cookie-bite text-4xl text-bakery-brown mb-2"></i>
+                <h1 class="text-2xl font-bold text-bakery-dark">BakeryOS Pro</h1>
+                <p class="text-sm text-gray-500">ระบบจัดการร้านเบเกอรี่</p>
+            </div>
+            
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Shop ID (ไอดีร้านค้า)</label>
+                    <input type="text" id="auth_shop_id" required class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-bakery-pink outline-none" placeholder="เช่น myshop1">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">ชื่อร้านค้า (สำหรับการสมัครใหม่)</label>
+                    <input type="text" id="auth_shop_name" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-bakery-pink outline-none" placeholder="เช่น Bake&Bake">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1">รหัสผ่าน</label>
+                    <input type="password" id="auth_password" required class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-bakery-pink outline-none">
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" onclick="authMode='login'" class="flex-1 bg-bakery-brown hover:bg-bakery-dark text-white font-bold py-3 rounded-lg transition">เข้าสู่ระบบ</button>
+                    <button type="submit" onclick="authMode='register'" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-lg transition">สมัครร้านใหม่</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Main App -->
+    <div id="main-app" class="hidden min-h-screen flex flex-col md:flex-row">
+        
+        <!-- Sidebar -->
+        <div class="w-full md:w-64 bg-white shadow-lg h-auto md:min-h-screen flex flex-col">
+            <div class="p-6 border-b border-gray-100 flex items-center gap-3">
+                <i class="fa-solid fa-store text-2xl text-bakery-pink"></i>
+                <h2 id="display-shop-name" class="font-bold text-lg">ร้านค้าของคุณ</h2>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="switchTab('dashboard')" class="w-full flex items-center gap-3 text-left p-3 rounded-lg hover:bg-bakery-light transition font-medium">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
+                </button>
+                <button onclick="switchTab('ingredients')" class="w-full flex items-center gap-3 text-left p-3 rounded-lg hover:bg-bakery-light transition font-medium">
+                    <i class="fa-solid fa-boxes-stacked w-5"></i> คลังวัตถุดิบ (Stock)
+                </button>
+                <button onclick="switchTab('recipe')" class="w-full flex items-center gap-3 text-left p-3 rounded-lg hover:bg-bakery-light transition font-medium">
+                    <i class="fa-solid fa-calculator w-5"></i> คำนวณสูตร & ต้นทุน
+                </button>
+            </nav>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="logout()" class="w-full text-red-500 flex items-center gap-3 p-2 hover:bg-red-50 rounded-lg transition">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> ออกจากระบบ
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 p-4 md:p-8">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard">
+                <h2 class="text-2xl font-bold mb-6">ภาพรวมข้อมูลในระบบจริง</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-bakery-pink">
+                        <p class="text-sm text-gray-500">จำนวนวัตถุดิบที่บันทึกไว้</p>
+                        <h3 id="dash-ing-count" class="text-3xl font-bold text-gray-800">0 รายการ</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-bakery-brown">
+                        <p class="text-sm text-gray-500">จำนวนสูตรขนมในระบบ</p>
+                        <h3 id="dash-recipe-count" class="text-3xl font-bold text-gray-800">0 สูตร</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingredients View -->
+            <div id="view-ingredients" class="hidden">
+                <h2 class="text-2xl font-bold mb-6">จัดการวัตถุดิบจริง</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4 text-bakery-dark">+ เพิ่มวัตถุดิบใหม่</h3>
+                        <form onsubmit="saveIngredient(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm mb-1">ชื่อวัตถุดิบ/แพ็กเกจ</label>
+                                <input type="text" id="ing_name" required class="w-full p-2 border rounded" placeholder="เช่น แป้งเค้ก, เนยสด">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-sm mb-1">ราคาซื้อ (บาท)</label>
+                                    <input type="number" step="0.01" id="ing_price" required class="w-full p-2 border rounded" placeholder="100">
+                                </div>
+                                <div>
+                                    <label class="block text-sm mb-1">ปริมาณที่ได้</label>
+                                    <input type="number" step="0.01" id="ing_qty" required class="w-full p-2 border rounded" placeholder="1000">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">หน่วยเรียก</label>
+                                <select id="ing_unit" class="w-full p-2 border rounded">
+                                    <option value="g">กรัม (g)</option>
+                                    <option value="ml">มิลลิลิตร (ml)</option>
+                                    <option value="ชิ้น">ชิ้น / ใบ</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-bakery-brown text-white py-2 rounded font-bold hover:bg-bakery-dark">บันทึกลง Google Sheet</button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="font-bold text-lg mb-4">รายการวัตถุดิบใน Sheet</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-bakery-light border-b">
+                                    <tr>
+                                        <th class="p-3">ชื่อวัตถุดิบ</th>
+                                        <th class="p-3">ราคาซื้อ</th>
+                                        <th class="p-3">ปริมาณ</th>
+                                        <th class="p-3">ต้นทุน/หน่วย</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ingredients-table-body">
+                                    <tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe View -->
+            <div id="view-recipe" class="hidden">
+                <h2 class="text-2xl font-bold mb-6">คำนวณต้นทุน & บันทึกสูตร</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                        <h3 class="font-bold text-lg text-bakery-dark">1. รายละเอียดสูตร</h3>
+                        <div>
+                            <label class="block text-sm mb-1">ชื่อขนม</label>
+                            <input type="text" id="rec_name" class="w-full p-2 border rounded" placeholder="เช่น คุกกี้เนยสด">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm mb-1">ทำได้กี่ชิ้น (Yield)</label>
+                                <input type="number" id="rec_yield" value="10" oninput="calculateRecipeCost()" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">ราคาขายต่อชิ้น (บาท)</label>
+                                <input type="number" id="rec_sell_price" value="50" oninput="calculateRecipeCost()" class="w-full p-2 border rounded">
+                            </div>
+                        </div>
+
+                        <h3 class="font-bold text-lg text-bakery-dark pt-2">2. เลือกวัตถุดิบที่ใช้</h3>
+                        <div class="flex gap-2">
+                            <select id="rec_ing_select" class="flex-1 p-2 border rounded"></select>
+                            <input type="number" id="rec_ing_qty" placeholder="จำนวนที่ใช้" class="w-32 p-2 border rounded">
+                            <button onclick="addIngredientToRecipe()" class="bg-bakery-pink text-white px-4 py-2 rounded font-bold">+</button>
+                        </div>
+
+                        <div class="space-y-2 border-t pt-2" id="recipe-items-list">
+                            <!-- Items inserted here -->
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-lg border-b pb-2 mb-4">3. สรุปต้นทุน Real-time</h3>
+                            <div class="space-y-3 text-base">
+                                <div class="flex justify-between"><span>ต้นทุนวัตถุดิบรวม:</span> <span id="res-total-cost" class="font-bold">฿0.00</span></div>
+                                <div class="flex justify-between"><span>ต้นทุนต่อชิ้น:</span> <span id="res-cost-per-piece" class="font-bold text-red-500">฿0.00</span></div>
+                                <div class="flex justify-between"><span>กำไรต่อชิ้น:</span> <span id="res-profit-per-piece" class="font-bold text-green-600">฿0.00</span></div>
+                                <div class="flex justify-between border-t pt-2"><span>% Margin:</span> <span id="res-margin" class="font-bold text-xl text-bakery-brown">0%</span></div>
+                            </div>
+                        </div>
+
+                        <button onclick="saveRecipeToSheet()" class="w-full bg-bakery-brown text-white py-3 rounded-lg font-bold text-lg hover:bg-bakery-dark mt-6">
+                            บันทึกสูตรลง Google Sheet
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ วาง URL ของ Web App จาก Google Apps Script ตรงนี้
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxkMEY2KyZKtCHc6hnMoPhLiaeOYxZLz6w9ks80FoCujf2c6_DS-QHp4IG1jlnjAjq8/exec";
+
+        let currentShop = null;
+        let authMode = 'login';
+        let dbIngredients = [];
+        let currentRecipeItems = [];
+
+        async function apiCall(action, payload = {}) {
+            document.getElementById('loading').classList.remove('hidden');
+            if (currentShop && currentShop.shop_id) {
+                payload.shop_id = currentShop.shop_id;
+            }
+            try {
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action, payload })
+                });
+                const res = await response.json();
+                document.getElementById('loading').classList.add('hidden');
+                if (res.status === 'error') throw new Error(res.message);
+                return res.data;
+            } catch (err) {
+                document.getElementById('loading').classList.add('hidden');
+                alert("เกิดข้อผิดพลาด: " + err.message);
+                throw err;
+            }
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const shop_id = document.getElementById('auth_shop_id').value.trim();
+            const shop_name = document.getElementById('auth_shop_name').value.trim();
+            const password = document.getElementById('auth_password').value.trim();
+
+            if (authMode === 'register') {
+                if (!shop_name) return alert("กรุณากรอกชื่อร้านค้า");
+                await apiCall('register', { shop_id, shop_name, password });
+                alert("สมัครเรียบร้อยแล้ว กรุณากดเข้าสู่ระบบ");
+            } else {
+                const data = await apiCall('login', { shop_id, password });
+                currentShop = data;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('display-shop-name').innerText = currentShop.shop_name;
+                loadDashboardData();
+            }
+        }
+
+        function switchTab(tab) {
+            ['dashboard', 'ingredients', 'recipe'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            if (tab === 'ingredients') loadIngredients();
+            if (tab === 'recipe') prepareRecipeView();
+        }
+
+        async function loadDashboardData() {
+            const data = await apiCall('getDashboard');
+            document.getElementById('dash-ing-count').innerText = data.total_ingredients + " รายการ";
+            document.getElementById('dash-recipe-count').innerText = data.total_recipes + " สูตร";
+        }
+
+        async function loadIngredients() {
+            dbIngredients = await apiCall('getIngredients');
+            const tbody = document.getElementById('ingredients-table-body');
+            tbody.innerHTML = '';
+            if (dbIngredients.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีวัตถุดิบในระบบ</td></tr>';
+                return;
+            }
+            dbIngredients.forEach(ing => {
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-3 font-medium">${ing.item_name}</td>
+                        <td class="p-3">฿${ing.buy_price}</td>
+                        <td class="p-3">${ing.buy_qty} ${ing.unit}</td>
+                        <td class="p-3 text-bakery-dark font-bold">฿${ing.cost_per_unit.toFixed(4)} / ${ing.unit}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function saveIngredient(e) {
+            e.preventDefault();
+            const item_name = document.getElementById('ing_name').value;
+            const buy_price = document.getElementById('ing_price').value;
+            const buy_qty = document.getElementById('ing_qty').value;
+            const unit = document.getElementById('ing_unit').value;
+
+            await apiCall('saveIngredient', { item_name, buy_price, buy_qty, unit });
+            alert("บันทึกวัตถุดิบสำเร็จ!");
+            document.getElementById('ing_name').value = '';
+            document.getElementById('ing_price').value = '';
+            document.getElementById('ing_qty').value = '';
+            loadIngredients();
+        }
+
+        async function prepareRecipeView() {
+            dbIngredients = await apiCall('getIngredients');
+            const select = document.getElementById('rec_ing_select');
+            select.innerHTML = '';
+            dbIngredients.forEach((ing, index) => {
+                select.innerHTML += `<option value="${index}">${ing.item_name} (฿${ing.cost_per_unit.toFixed(3)}/${ing.unit})</option>`;
+            });
+        }
+
+        function addIngredientToRecipe() {
+            const select = document.getElementById('rec_ing_select');
+            const qtyInput = document.getElementById('rec_ing_qty');
+            if (select.value === '' || !qtyInput.value) return alert("กรุณาเลือกวัตถุดิบและใส่ปริมาณ");
+
+            const ing = dbIngredients[select.value];
+            const qtyUsed = parseFloat(qtyInput.value);
+            const calculatedCost = ing.cost_per_unit * qtyUsed;
+
+            currentRecipeItems.push({
+                name: ing.item_name,
+                qty: qtyUsed,
+                unit: ing.unit,
+                cost: calculatedCost
+            });
+
+            qtyInput.value = '';
+            renderRecipeItems();
+            calculateRecipeCost();
+        }
+
+        function renderRecipeItems() {
+            const list = document.getElementById('recipe-items-list');
+            list.innerHTML = '';
+            currentRecipeItems.forEach((item, idx) => {
+                list.innerHTML += `
+                    <div class="flex justify-between text-sm bg-gray-50 p-2 rounded items-center">
+                        <span>${item.name} (${item.qty} ${item.unit})</span>
+                        <span class="font-bold">฿${item.cost.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function calculateRecipeCost() {
+            const yieldQty = parseFloat(document.getElementById('rec_yield').value) || 1;
+            const sellPrice = parseFloat(document.getElementById('rec_sell_price').value) || 0;
+
+            const totalIngCost = currentRecipeItems.reduce((sum, item) => sum + item.cost, 0);
+            const costPerPiece = totalIngCost / yieldQty;
+            const profitPerPiece = sellPrice - costPerPiece;
+            const margin = sellPrice > 0 ? (profitPerPiece / sellPrice) * 100 : 0;
+
+            document.getElementById('res-total-cost').innerText = `฿${totalIngCost.toFixed(2)}`;
+            document.getElementById('res-cost-per-piece').innerText = `฿${costPerPiece.toFixed(2)}`;
+            document.getElementById('res-profit-per-piece').innerText = `฿${profitPerPiece.toFixed(2)}`;
+            document.getElementById('res-margin').innerText = `${margin.toFixed(1)}%`;
+        }
+
+        async function saveRecipeToSheet() {
+            const recipe_name = document.getElementById('rec_name').value;
+            const yield_qty = parseFloat(document.getElementById('rec_yield').value) || 1;
+            const selling_price = parseFloat(document.getElementById('rec_sell_price').value) || 0;
+
+            if (!recipe_name || currentRecipeItems.length === 0) {
+                return alert("กรุณาใส่ชื่อขนมและเลือกวัตถุดิบอย่างน้อย 1 รายการ");
+            }
+
+            const totalIngCost = currentRecipeItems.reduce((sum, item) => sum + item.cost, 0);
+            const costPerPiece = totalIngCost / yield_qty;
+            const profitPerPiece = selling_price - costPerPiece;
+            const marginPercent = selling_price > 0 ? (profitPerPiece / selling_price) * 100 : 0;
+
+            await apiCall('saveRecipe', {
+                recipe_name,
+                yield_qty,
+                selling_price,
+                total_ing_cost: totalIngCost,
+                cost_per_piece: costPerPiece,
+                profit_per_piece: profitPerPiece,
+                margin_percent: marginPercent,
+                ingredients: currentRecipeItems
+            });
+
+            alert("บันทึกสูตรขนมลง Google Sheet เรียบร้อยแล้ว!");
+            document.getElementById('rec_name').value = '';
+            currentRecipeItems = [];
+            renderRecipeItems();
+            calculateRecipeCost();
+        }
+
+        function logout() {
+            currentShop = null;
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

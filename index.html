@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bakery Cost & Profit Calculator (Pro Version)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #fcf9f2; color: #4a4a4a; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .btn-primary { background-color: #d2a679; color: white; transition: all 0.3s; }
+        .btn-primary:hover { background-color: #b88a5a; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-[#8b5e3c] mb-2"><i class="fas fa-cookie-bite mr-2"></i> Bakery Cost & Profit Calculator</h1>
+            <p class="text-gray-500">ระบบคำนวณต้นทุนและกำไรสำหรับร้านเบเกอรี่ (Pro Version)</p>
+        </header>
+
+        <!-- Dashboard Section -->
+        <div class="card p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-[#8b5e3c]"><i class="fas fa-chart-line mr-2"></i> Dashboard สรุปเมนูทั้งหมด</h2>
+                <button onclick="showAddForm()" class="btn-primary px-4 py-2 rounded-lg font-medium shadow-sm">
+                    <i class="fas fa-plus mr-1"></i> เพิ่มเมนูใหม่
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#f3e5d8] text-[#8b5e3c]">
+                            <th class="p-3 border-b-2 border-[#e6d0bc] rounded-tl-lg">ชื่อเมนู</th>
+                            <th class="p-3 border-b-2 border-[#e6d0bc] text-right">ต้นทุน/ชิ้น</th>
+                            <th class="p-3 border-b-2 border-[#e6d0bc] text-right">ราคาขาย</th>
+                            <th class="p-3 border-b-2 border-[#e6d0bc] text-right">กำไร/ชิ้น</th>
+                            <th class="p-3 border-b-2 border-[#e6d0bc] text-right">% กำไร</th>
+                            <th class="p-3 border-b-2 border-[#e6d0bc] text-center rounded-tr-lg">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboard-body">
+                        <!-- Data will be populated here by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-data-msg" class="text-center py-8 text-gray-400">
+                <i class="fas fa-folder-open text-4xl mb-3"></i>
+                <p>ยังไม่มีข้อมูลเมนู กรุณากด "เพิ่มเมนูใหม่"</p>
+            </div>
+        </div>
+
+        <!-- Recipe Form Section (Hidden by default) -->
+        <div id="recipe-form-container" class="card p-6 mb-8 hidden border-t-4 border-[#d2a679]">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h2 class="text-2xl font-semibold text-[#8b5e3c]" id="form-title"><i class="fas fa-edit mr-2"></i> สร้าง/แก้ไขเมนู</h2>
+                <button onclick="hideAddForm()" class="text-gray-500 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อเมนู</label>
+                    <input type="text" id="menuName" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#d2a679] focus:outline-none" placeholder="เช่น บราวนี่เนื้อหนึบ">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ทำได้กี่ชิ้น (Yield)</label>
+                    <input type="number" id="yieldQty" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#d2a679] focus:outline-none" placeholder="จำนวนชิ้น" min="1" oninput="calculateTotals()">
+                </div>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-2">
+                    <h3 class="text-lg font-medium text-[#8b5e3c]"><i class="fas fa-shopping-basket mr-2"></i> รายการวัตถุดิบ</h3>
+                </div>
+                <div class="overflow-x-auto mb-2">
+                    <table class="w-full border-collapse" id="ingredients-table">
+                        <thead>
+                            <tr class="bg-gray-100 text-sm text-gray-600">
+                                <th class="p-2 border text-left">ชื่อวัตถุดิบ</th>
+                                <th class="p-2 border text-right w-32">ราคาที่ซื้อมา (฿)</th>
+                                <th class="p-2 border text-right w-32">ปริมาณที่ซื้อ (g/ml)</th>
+                                <th class="p-2 border text-right w-32">ปริมาณที่ใช้ในสูตร</th>
+                                <th class="p-2 border text-right w-32">ต้นทุนที่ใช้จริง (฿)</th>
+                                <th class="p-2 border text-center w-16">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ingredients-body">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <button onclick="addIngredientRow()" class="text-sm text-[#d2a679] font-medium hover:text-[#8b5e3c]"><i class="fas fa-plus-circle mr-1"></i> เพิ่มวัตถุดิบ</button>
+            </div>
+
+            <!-- Packaging -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-2">
+                    <h3 class="text-lg font-medium text-[#8b5e3c]"><i class="fas fa-box-open mr-2"></i> แพ็กเกจและต้นทุนแฝง (เช่น ค่าไฟ, กล่อง)</h3>
+                </div>
+                <div class="overflow-x-auto mb-2">
+                    <table class="w-full border-collapse" id="packaging-table">
+                        <thead>
+                            <tr class="bg-gray-100 text-sm text-gray-600">
+                                <th class="p-2 border text-left">รายการ</th>
+                                <th class="p-2 border text-right w-32">ราคาที่ซื้อมา (฿)</th>
+                                <th class="p-2 border text-right w-32">จำนวนที่ซื้อมา</th>
+                                <th class="p-2 border text-right w-32">จำนวนที่ใช้</th>
+                                <th class="p-2 border text-right w-32">รวมต้นทุน (฿)</th>
+                                <th class="p-2 border text-center w-16">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="packaging-body">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <button onclick="addPackagingRow()" class="text-sm text-[#d2a679] font-medium hover:text-[#8b5e3c]"><i class="fas fa-plus-circle mr-1"></i> เพิ่มรายการ</button>
+            </div>
+
+            <!-- Summary & Pricing -->
+            <div class="bg-[#fdfaf6] p-6 rounded-lg border border-[#e6d0bc] mb-6">
+                <h3 class="text-xl font-bold text-[#8b5e3c] mb-4 border-b border-[#e6d0bc] pb-2">สรุปต้นทุนและกำไร</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Costs -->
+                    <div>
+                        <div class="flex justify-between py-2 border-b border-dashed">
+                            <span class="text-gray-600">ต้นทุนวัตถุดิบรวม:</span>
+                            <span class="font-semibold" id="sumIngCost">฿0.00</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-dashed">
+                            <span class="text-gray-600">ต้นทุนแพ็กเกจและอื่นๆ รวม:</span>
+                            <span class="font-semibold" id="sumPkgCost">฿0.00</span>
+                        </div>
+                        <div class="flex justify-between py-2 bg-[#f3e5d8] px-3 mt-2 rounded">
+                            <span class="font-bold text-[#8b5e3c]">ต้นทุนรวมทั้งหมด (Total Cost):</span>
+                            <span class="font-bold text-[#8b5e3c]" id="totalCost">฿0.00</span>
+                        </div>
+                        <div class="flex justify-between py-3 px-3 mt-2 bg-gray-100 rounded text-lg">
+                            <span class="font-bold text-gray-700">ต้นทุนต่อชิ้น (Cost/Piece):</span>
+                            <span class="font-bold text-red-500" id="costPerPiece">฿0.00</span>
+                        </div>
+                    </div>
+                    <!-- Profit -->
+                    <div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">ราคาขายต่อชิ้น (Selling Price)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">฿</span>
+                                <input type="number" id="sellingPrice" class="w-full pl-8 p-2 border-2 border-green-300 rounded text-lg font-bold focus:ring-2 focus:ring-green-500 focus:outline-none" placeholder="0.00" oninput="calculateTotals()">
+                            </div>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-dashed">
+                            <span class="font-bold text-gray-700">กำไรต่อชิ้น (Profit):</span>
+                            <span class="font-bold text-green-600 text-xl" id="profitPerPiece">฿0.00</span>
+                        </div>
+                        <div class="flex justify-between py-2 mt-2">
+                            <span class="font-bold text-gray-700">สัดส่วนกำไร (Margin %):</span>
+                            <span class="font-bold text-blue-600 text-xl" id="profitMargin">0.00%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="hideAddForm()" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100">ยกเลิก</button>
+                <button onclick="saveMenu()" class="btn-primary px-6 py-2 rounded-lg font-bold shadow-md"><i class="fas fa-save mr-2"></i> บันทึกข้อมูล</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let menus = JSON.parse(localStorage.getItem('bakeryMenus')) || [];
+        let currentEditingIndex = -1;
+
+        // Initialize
+        renderDashboard();
+
+        function renderDashboard() {
+            const tbody = document.getElementById('dashboard-body');
+            const noData = document.getElementById('no-data-msg');
+            tbody.innerHTML = '';
+            
+            if (menus.length === 0) {
+                noData.classList.remove('hidden');
+            } else {
+                noData.classList.add('hidden');
+                menus.forEach((menu, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 border-b";
+                    tr.innerHTML = `
+                        <td class="p-3 font-medium text-gray-800">${menu.name || 'ไม่มีชื่อเมนู'}</td>
+                        <td class="p-3 text-right text-red-500 font-medium">฿${menu.costPerPiece.toFixed(2)}</td>
+                        <td class="p-3 text-right text-gray-800 font-bold">฿${menu.sellingPrice.toFixed(2)}</td>
+                        <td class="p-3 text-right text-green-600 font-bold">฿${menu.profit.toFixed(2)}</td>
+                        <td class="p-3 text-right text-blue-600 font-bold">${menu.margin.toFixed(2)}%</td>
+                        <td class="p-3 text-center">
+                            <button onclick="editMenu(${index})" class="text-yellow-600 hover:text-yellow-800 mx-1" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteMenu(${index})" class="text-red-500 hover:text-red-700 mx-1" title="ลบ"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function showAddForm() {
+            currentEditingIndex = -1;
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-plus-circle mr-2"></i> เพิ่มเมนูใหม่';
+            resetForm();
+            document.getElementById('recipe-form-container').classList.remove('hidden');
+            window.scrollTo({ top: document.getElementById('recipe-form-container').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function hideAddForm() {
+            document.getElementById('recipe-form-container').classList.add('hidden');
+        }
+
+        function resetForm() {
+            document.getElementById('menuName').value = '';
+            document.getElementById('yieldQty').value = '1';
+            document.getElementById('sellingPrice').value = '';
+            document.getElementById('ingredients-body').innerHTML = '';
+            document.getElementById('packaging-body').innerHTML = '';
+            addIngredientRow(); // Add 1 empty row
+            addPackagingRow();  // Add 1 empty row
+            calculateTotals();
+        }
+
+        function addIngredientRow(data = {name: '', price: '', qtyBought: '', qtyUsed: ''}) {
+            const tbody = document.getElementById('ingredients-body');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="p-1 border"><input type="text" class="w-full p-1 border rounded ing-name" value="${data.name}" placeholder="เช่น แป้ง"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right ing-price" value="${data.price}" oninput="calculateTotals()"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right ing-qtyb" value="${data.qtyBought}" oninput="calculateTotals()"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right ing-qtyu" value="${data.qtyUsed}" oninput="calculateTotals()"></td>
+                <td class="p-1 border bg-gray-50 text-right font-medium text-gray-700 ing-cost">฿0.00</td>
+                <td class="p-1 border text-center"><button onclick="this.closest('tr').remove(); calculateTotals();" class="text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function addPackagingRow(data = {name: '', price: '', qtyBought: '', qtyUsed: ''}) {
+            const tbody = document.getElementById('packaging-body');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="p-1 border"><input type="text" class="w-full p-1 border rounded pkg-name" value="${data.name}" placeholder="เช่น กล่อง"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right pkg-price" value="${data.price}" oninput="calculateTotals()"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right pkg-qtyb" value="${data.qtyBought}" oninput="calculateTotals()"></td>
+                <td class="p-1 border"><input type="number" class="w-full p-1 border rounded text-right pkg-qtyu" value="${data.qtyUsed}" oninput="calculateTotals()"></td>
+                <td class="p-1 border bg-gray-50 text-right font-medium text-gray-700 pkg-cost">฿0.00</td>
+                <td class="p-1 border text-center"><button onclick="this.closest('tr').remove(); calculateTotals();" class="text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function calculateTotals() {
+            let sumIngCost = 0;
+            // Ingredients
+            document.querySelectorAll('#ingredients-body tr').forEach(tr => {
+                const price = parseFloat(tr.querySelector('.ing-price').value) || 0;
+                const qtyb = parseFloat(tr.querySelector('.ing-qtyb').value) || 1;
+                const qtyu = parseFloat(tr.querySelector('.ing-qtyu').value) || 0;
+                
+                const cost = (price / qtyb) * qtyu;
+                tr.querySelector('.ing-cost').innerText = '฿' + cost.toFixed(2);
+                sumIngCost += cost;
+            });
+
+            let sumPkgCost = 0;
+            // Packaging
+            document.querySelectorAll('#packaging-body tr').forEach(tr => {
+                const price = parseFloat(tr.querySelector('.pkg-price').value) || 0;
+                const qtyb = parseFloat(tr.querySelector('.pkg-qtyb').value) || 1;
+                const qtyu = parseFloat(tr.querySelector('.pkg-qtyu').value) || 0;
+                
+                const cost = (price / qtyb) * qtyu;
+                tr.querySelector('.pkg-cost').innerText = '฿' + cost.toFixed(2);
+                sumPkgCost += cost;
+            });
+
+            const totalCost = sumIngCost + sumPkgCost;
+            const yieldQty = parseFloat(document.getElementById('yieldQty').value) || 1;
+            const costPerPiece = totalCost / yieldQty;
+
+            document.getElementById('sumIngCost').innerText = '฿' + sumIngCost.toFixed(2);
+            document.getElementById('sumPkgCost').innerText = '฿' + sumPkgCost.toFixed(2);
+            document.getElementById('totalCost').innerText = '฿' + totalCost.toFixed(2);
+            document.getElementById('costPerPiece').innerText = '฿' + costPerPiece.toFixed(2);
+
+            // Profit
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value) || 0;
+            const profit = sellingPrice - costPerPiece;
+            let margin = 0;
+            if (sellingPrice > 0) margin = (profit / sellingPrice) * 100;
+
+            document.getElementById('profitPerPiece').innerText = '฿' + profit.toFixed(2);
+            document.getElementById('profitMargin').innerText = margin.toFixed(2) + '%';
+            
+            // color formatting
+            document.getElementById('profitPerPiece').className = profit >= 0 ? "font-bold text-green-600 text-xl" : "font-bold text-red-600 text-xl";
+            document.getElementById('profitMargin').className = margin >= 0 ? "font-bold text-blue-600 text-xl" : "font-bold text-red-600 text-xl";
+        }
+
+        function saveMenu() {
+            const menuName = document.getElementById('menuName').value.trim() || 'เมนูไม่มีชื่อ';
+            const yieldQty = parseFloat(document.getElementById('yieldQty').value) || 1;
+            const sellingPrice = parseFloat(document.getElementById('sellingPrice').value) || 0;
+
+            const ingredients = Array.from(document.querySelectorAll('#ingredients-body tr')).map(tr => ({
+                name: tr.querySelector('.ing-name').value,
+                price: parseFloat(tr.querySelector('.ing-price').value) || 0,
+                qtyBought: parseFloat(tr.querySelector('.ing-qtyb').value) || 0,
+                qtyUsed: parseFloat(tr.querySelector('.ing-qtyu').value) || 0
+            })).filter(i => i.name || i.price || i.qtyUsed);
+
+            const packaging = Array.from(document.querySelectorAll('#packaging-body tr')).map(tr => ({
+                name: tr.querySelector('.pkg-name').value,
+                price: parseFloat(tr.querySelector('.pkg-price').value) || 0,
+                qtyBought: parseFloat(tr.querySelector('.pkg-qtyb').value) || 0,
+                qtyUsed: parseFloat(tr.querySelector('.pkg-qtyu').value) || 0
+            })).filter(i => i.name || i.price || i.qtyUsed);
+
+            // Re-calculate to save accurate data
+            let sumIngCost = 0;
+            ingredients.forEach(i => sumIngCost += (i.price / (i.qtyBought||1)) * i.qtyUsed);
+            
+            let sumPkgCost = 0;
+            packaging.forEach(i => sumPkgCost += (i.price / (i.qtyBought||1)) * i.qtyUsed);
+
+            const totalCost = sumIngCost + sumPkgCost;
+            const costPerPiece = totalCost / yieldQty;
+            const profit = sellingPrice - costPerPiece;
+            const margin = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+
+            const menuData = {
+                name: menuName, yieldQty, sellingPrice,
+                ingredients, packaging,
+                totalCost, costPerPiece, profit, margin
+            };
+
+            if (currentEditingIndex > -1) {
+                menus[currentEditingIndex] = menuData;
+            } else {
+                menus.push(menuData);
+            }
+
+            localStorage.setItem('bakeryMenus', JSON.stringify(menus));
+            renderDashboard();
+            hideAddForm();
+            
+            alert('บันทึกข้อมูลเรียบร้อยแล้ว!');
+        }
+
+        function editMenu(index) {
+            currentEditingIndex = index;
+            const menu = menus[index];
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-edit mr-2"></i> แก้ไขเมนู: ' + menu.name;
+            
+            document.getElementById('menuName').value = menu.name;
+            document.getElementById('yieldQty').value = menu.yieldQty;
+            document.getElementById('sellingPrice').value = menu.sellingPrice;
+
+            document.getElementById('ingredients-body').innerHTML = '';
+            document.getElementById('packaging-body').innerHTML = '';
+
+            if (menu.ingredients.length > 0) {
+                menu.ingredients.forEach(i => addIngredientRow(i));
+            } else {
+                addIngredientRow();
+            }
+
+            if (menu.packaging.length > 0) {
+                menu.packaging.forEach(i => addPackagingRow(i));
+            } else {
+                addPackagingRow();
+            }
+
+            calculateTotals();
+            document.getElementById('recipe-form-container').classList.remove('hidden');
+            window.scrollTo({ top: document.getElementById('recipe-form-container').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function deleteMenu(index) {
+            if(confirm('คุณแน่ใจหรือไม่ว่าต้องการลบเมนู "' + menus[index].name + '"?')) {
+                menus.splice(index, 1);
+                localStorage.setItem('bakeryMenus', JSON.stringify(menus));
+                renderDashboard();
+            }
+        }
+    </script>
+</body>
+</html>

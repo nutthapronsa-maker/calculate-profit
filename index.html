@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BakeryOS Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; color: #374151; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- หน้า Login -->
+    <div id="login-screen" class="fixed inset-0 bg-white z-50 flex flex-col justify-center items-center">
+        <div class="card p-8 w-full max-w-md text-center">
+            <h1 class="text-3xl font-bold text-pink-600 mb-2"><i class="fas fa-cookie-bite mr-2"></i> BakeryOS Pro</h1>
+            <p class="text-gray-500 mb-6">เข้าสู่ระบบจัดการร้านของคุณ</p>
+            <div class="mb-4 text-left">
+                <label class="block text-sm font-medium text-gray-700 mb-1">รหัสร้านค้า (Shop ID)</label>
+                <input type="text" id="shop-id" class="w-full p-2 border rounded" placeholder="เช่น SHOP001">
+            </div>
+            <div class="mb-6 text-left">
+                <label class="block text-sm font-medium text-gray-700 mb-1">รหัสผ่าน</label>
+                <input type="password" id="password" class="w-full p-2 border rounded">
+            </div>
+            <button id="login-btn" onclick="processLogin()" class="w-full bg-pink-600 text-white p-2 rounded hover:bg-pink-700 font-medium">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <!-- หน้า Dashboard -->
+    <div id="main-app" class="flex w-full h-full hidden flex-col p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-pink-600">ยินดีต้อนรับ ร้านรหัส: <span id="display-shop-id" class="text-gray-800"></span></h1>
+        </div>
+        
+        <div class="card p-6">
+            <h2 class="text-xl font-bold mb-4">เมนูขนมของร้านคุณ</h2>
+            <div id="loading" class="text-gray-500 hidden mb-4"><i class="fas fa-spinner fa-spin mr-2"></i> กำลังดึงข้อมูลจาก Database...</div>
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="p-3 border-b">ชื่อเมนู</th>
+                        <th class="p-3 border-b text-right">ต้นทุน</th>
+                        <th class="p-3 border-b text-right">ราคาขาย</th>
+                    </tr>
+                </thead>
+                <tbody id="menu-body">
+                    <!-- ข้อมูลจะถูกโหลดมาใส่ตรงนี้ -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- โค้ด JavaScript ต้องอยู่ภายในแท็ก <script> เสมอ -->
+    <script>
+        // ลิงก์ API ที่คุณสร้างไว้
+        const API_URL = "https://script.google.com/macros/s/AKfycbyDDo4D_KGQHlfVWy5pKnVCz00ogydn7-Kth3-YgB6cFA3tsQY9DvmkjCyXAxB2x1jnIg/exec"; 
+        let currentShopId = "";
+
+        async function processLogin() {
+            const shopId = document.getElementById('shop-id').value;
+            const password = document.getElementById('password').value;
+            
+            if(!shopId || !password) return alert("กรุณากรอกรหัสร้านและรหัสผ่าน");
+            
+            document.getElementById('login-btn').innerText = "กำลังตรวจสอบ...";
+            
+            try {
+                // ส่งข้อมูลไปหา Google Apps Script API
+                const response = await fetch(`${API_URL}?action=login&shopId=${shopId}&password=${password}`);
+                const data = await response.json();
+                
+                if(data.success) {
+                    currentShopId = shopId;
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    document.getElementById('display-shop-id').innerText = shopId;
+                    loadMenus(); // สั่งให้ดึงข้อมูลเมนูต่อทันที
+                } else {
+                    alert(data.message || "รหัสผ่านไม่ถูกต้อง");
+                    document.getElementById('login-btn').innerText = "เข้าสู่ระบบ";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับ Database");
+                document.getElementById('login-btn').innerText = "เข้าสู่ระบบ";
+            }
+        }
+
+        async function loadMenus() {
+            document.getElementById('loading').classList.remove('hidden');
+            const tbody = document.getElementById('menu-body');
+            tbody.innerHTML = ''; // ล้างข้อมูลเก่า
+            
+            try {
+                const response = await fetch(`${API_URL}?action=getMenus&shopId=${currentShopId}`);
+                const menus = await response.json();
+                
+                if (menus.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-gray-500">ยังไม่มีข้อมูลเมนูในระบบ</td></tr>';
+                } else {
+                    menus.forEach(menu => {
+                        tbody.innerHTML += `
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-3 font-medium">${menu.name}</td>
+                                <td class="p-3 text-right text-red-500">฿${menu.cost}</td>
+                                <td class="p-3 text-right font-bold text-gray-800">฿${menu.price}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('loading').innerText = "ดึงข้อมูลล้มเหลว กรุณาลองใหม่";
+            }
+        }
+    </script>
+</body>
+</html>

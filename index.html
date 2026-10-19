@@ -1,0 +1,41 @@
+const API_URL = "https://script.google.com/macros/s/AKfycbzY58EIvGDMzCnNwGYo8wPW-hQAua8WaUOarbW5odoEn6jpLxfn4v3nq2zqz6ZL7yyWDA/exec";
+let currentShopId = "";
+
+async function processLogin() {
+    const shopId = document.getElementById('shop-id').value;
+    const password = document.getElementById('password').value;
+    document.getElementById('login-btn').innerText = "กำลังตรวจสอบ...";
+
+    try {
+        // ส่งข้อมูลไปหา Google Apps Script API
+        const response = await fetch(`${API_URL}?action=login&shopId=${shopId}&password=${password}`);
+        const data = await response.json();
+
+        if(data.success) {
+            currentShopId = shopId;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('display-shop-id').innerText = shopId;
+            loadMenus(); 
+        } else {
+            alert(data.message);
+            document.getElementById('login-btn').innerText = "เข้าสู่ระบบ";
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+}
+
+async function loadMenus() {
+    try {
+        const response = await fetch(`${API_URL}?action=getMenus&shopId=${currentShopId}`);
+        const menus = await response.json();
+
+        // นำข้อมูล menus ที่ได้ไปแสดงผลในตาราง (ดูวิธีเขียนจาก Mockup เดิม)
+        console.log(menus); 
+
+    } catch (error) {
+        console.error("Error:", error);
+    }
+}
